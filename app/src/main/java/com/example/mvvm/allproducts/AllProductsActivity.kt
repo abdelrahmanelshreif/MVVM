@@ -34,7 +34,14 @@ import com.example.mvvm.data.remote.ProductRemoteDataSource
 import com.example.mvvm.data.remote.RetrofitHelper
 import com.example.mvvm.repo.ProductRepository
 import android.content.Context
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.mvvm.data.models.Response
+import kotlinx.coroutines.flow.collect
 
 class AllProductsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,29 +71,43 @@ class AllProductsActivity : ComponentActivity() {
 
 @Composable
 fun ProductListScreen(allProductsViewModel: AllProductsViewModel) {
-    val productsState = allProductsViewModel.products.observeAsState()
+    val uiState = allProductsViewModel.productsList.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(Unit) {
-        allProductsViewModel.getProducts()
+        allProductsViewModel.toastEvent.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    when (uiState.value) {
+        is Response.Loading -> {
+            LoadingIndicator()
+        }
 
+        is Response.Failure -> {
+            Text(
+                "Can't Fetch Now",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .wrapContentSize(),
+                fontSize = 22.sp
+            )
 
-        if (productsState.value?.isEmpty() != false) {
-            Text(text = "No products available")
-        } else {
+        }
+
+        is Response.Success -> Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val products = (uiState.value as Response.Success).data
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(productsState.value ?: listOf<Product>()) { product ->
+                items(products ?: listOf<Product>()) { product ->
                     ProductItem(product = product) {
                         allProductsViewModel.insertProduct(product)
                         Toast.makeText(
@@ -99,6 +120,18 @@ fun ProductListScreen(allProductsViewModel: AllProductsViewModel) {
             }
 
         }
+    }
+}
+
+
+@Composable
+fun LoadingIndicator() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .wrapContentSize()
+    ) {
+        CircularProgressIndicator()
     }
 }
 

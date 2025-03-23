@@ -6,26 +6,48 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mvvm.data.models.Product
+import com.example.mvvm.data.models.Response
 import com.example.mvvm.repo.ProductRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+
 
 class AllProductsViewModel(private val repo: ProductRepository) : ViewModel() {
 
-    private val _mutableProducts: MutableLiveData<List<Product>> = MutableLiveData()
-    val products: LiveData<List<Product>> = _mutableProducts
+    private val _productsList = MutableStateFlow<Response>(Response.Loading)
+    val productsList = _productsList.asStateFlow()
 
-    private val mutableMessage: MutableLiveData<String> = MutableLiveData("")
-    val message: LiveData<String> = mutableMessage
+    private val _toastEvent = MutableSharedFlow<String>()
+    val toastEvent = _toastEvent.asSharedFlow()
 
+    init {
+        getProducts()
+    }
 
     fun getProducts() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             try {
-                val productList = repo.getProducts().products
-                _mutableProducts.postValue(productList)
-            } catch (e: Exception) {
-                mutableMessage.postValue("Failed to fetch products")
+                val products = repo.getProducts()
+                products
+                    .catch { ex ->
+                        _productsList.value = Response.Failure(ex)
+                        _toastEvent.emit("Can't Fetch Products Right now Please try again later")
+                    }
+                    .collect {
+                        _productsList.value = Response.Success(it.products)
+
+                    }
+            } catch (   ex: Exception) {
+                _productsList.value = Response.Failure(ex)
+                _toastEvent.emit("Error ${ex.message}")
+
             }
         }
     }

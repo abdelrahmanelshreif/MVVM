@@ -5,7 +5,7 @@ import com.example.mvvm.data.models.Product
 
 class ProductRemoteDataSource(private val apiServices: ProductApiServices) {
 
-    suspend fun getProducts(): ProductResponse {
+    suspend fun getProducts(): ProductResponse{
         return apiServices.getProducts()
     }
 

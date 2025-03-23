@@ -5,7 +5,7 @@ import com.example.mvvm.data.remote.ProductResponse
 import kotlinx.coroutines.flow.Flow
 
 interface IProductRepository {
-    suspend fun getProducts(): ProductResponse
+    suspend fun getProducts(): Flow<ProductResponse>
 
     suspend fun addProductToFav(product: Product): Long
 
